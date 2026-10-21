@@ -4,6 +4,7 @@
 # ==========================================================
 #                    INSANE HOST
 #              INSANE HOST DEVELOPMENT
+#                  ULTIMATE EDITION
 # ==========================================================
 
 set -Eeuo pipefail
@@ -33,10 +34,6 @@ else
     BOLD=''
     RESET=''
 fi
-
-APP_DIR="/opt/Jtg"
-APP_REPO="https://github.com/JishnuTheGamer/Jtg.git"
-APP_PORT="6767"
 
 # -------------------- FUNCTIONS ---------------------------
 
@@ -102,7 +99,7 @@ show_logo() {
 ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗
 ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝
 ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗
-██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║╔══╝
+██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝
 ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗
 ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝
 
@@ -145,7 +142,7 @@ show_logo
 line
 
 printf "${PURPLE}${BOLD}           ULTIMATE VPS INSTALLER${RESET}\n"
-printf "${GRAY}       Jtg | Node.js | Cloudflare${RESET}\n"
+printf "${GRAY}       Jtg App | Node.js | Cloudflare${RESET}\n"
 
 line
 
@@ -202,43 +199,46 @@ line
 printf "${PURPLE}${BOLD}       PHASE 02 — NODE.JS INSTALLATION${RESET}\n"
 line
 
-info "Installing Node.js and npm..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm
+info "Installing Node.js..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+
+info "Installing npm..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y npm
 
 node --version
 npm --version
 
-# -------------------- JTG INSTALLATION --------------------
+# -------------------- JTG APPLICATION ----------------------
 
 printf "\n"
 line
-printf "${PURPLE}${BOLD}       PHASE 03 — JTG INSTALLATION${RESET}\n"
+printf "${PURPLE}${BOLD}       PHASE 03 — JTG APPLICATION SETUP${RESET}\n"
 line
 
-if [[ -d "$APP_DIR/.git" ]]; then
-    warning "Existing Jtg Git repository found."
-    info "Updating repository..."
-    git -C "$APP_DIR" pull --ff-only
-elif [[ -e "$APP_DIR" ]]; then
-    error "$APP_DIR exists but is not a Git repository."
+if [[ -e "Jtg" ]]; then
+    error "The Jtg directory already exists in $(pwd)."
+    error "Move or back up that directory before running this installer again."
     exit 1
-else
-    info "Cloning Jtg repository..."
-    git clone "$APP_REPO" "$APP_DIR"
 fi
 
-cd "$APP_DIR"
+info "Cloning Jtg repository..."
+git clone https://github.com/JishnuTheGamer/Jtg.git
+
+SCRIPT_DIR="$(pwd)"
+cd "$SCRIPT_DIR/Jtg"
 
 info "Installing npm dependencies..."
 npm install
 
-info "Building Jtg..."
+info "Building application..."
 npm run build
 
-info "Creating application user..."
+info "Running createuser setup..."
 npm run createuser
 
-# -------------------- CLOUDFLARE --------------------------
+cd "$SCRIPT_DIR"
+
+# -------------------- CLOUDFLARE INSTALLATION --------------
 
 printf "\n"
 line
@@ -258,9 +258,12 @@ printf '%s\n' \
     > /etc/apt/sources.list.d/cloudflared.list
 
 apt-get update
+
+info "Installing cloudflared..."
 DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
 
 cloudflared --version
+success "Cloudflare installation completed."
 
 # -------------------- CLOUDFLARE TUNNEL -------------------
 
@@ -276,10 +279,9 @@ cat <<'EOF'
   ╠════════════════════════════════════════════════════╣
   ║                                                    ║
   ║  Paste your tunnel token OR service install command║
-  ║                                                    ║
   ║  Example: cloudflared service install YOUR_TOKEN   ║
   ║                                                    ║
-  ║  Leave blank to skip this step.                    ║
+  ║  Leave blank to skip.                              ║
   ╚════════════════════════════════════════════════════╝
 EOF
 printf "${RESET}\n"
@@ -288,30 +290,30 @@ CLOUDFLARE_INPUT=""
 IFS= read -r -s -p "  Cloudflare input: " CLOUDFLARE_INPUT || true
 printf "\n"
 
-if [[ -z "${CLOUDFLARE_INPUT//[[:space:]]/}" ]]; then
-    warning "Cloudflare service setup skipped."
-else
+if [[ -n "${CLOUDFLARE_INPUT//[[:space:]]/}" ]]; then
     CLOUDFLARE_TOKEN=""
 
     if [[ "$CLOUDFLARE_INPUT" =~ ^[A-Za-z0-9._=+/-]+$ ]]; then
         CLOUDFLARE_TOKEN="$CLOUDFLARE_INPUT"
-
     elif [[ "$CLOUDFLARE_INPUT" =~ ^[[:space:]]*(sudo[[:space:]]+)?(cloudflared|/usr/bin/cloudflared)[[:space:]]+service[[:space:]]+install[[:space:]]+([A-Za-z0-9._=+/-]+)[[:space:]]*$ ]]; then
         CLOUDFLARE_TOKEN="${BASH_REMATCH[3]}"
     else
-        warning "Input format not recognized."
+        warning "Input format not recognized; skipping tunnel setup."
     fi
 
     unset CLOUDFLARE_INPUT
 
     if [[ -n "$CLOUDFLARE_TOKEN" ]]; then
-        printf "\nInstall the Cloudflare service now? [y/N]: "
+        printf "\n${YELLOW}Install the Cloudflare service now? [y/N]: ${RESET}"
         read -r CF_CONFIRM || true
 
         case "$CF_CONFIRM" in
             y|Y|yes|YES)
-                cloudflared service install "$CLOUDFLARE_TOKEN" ||
+                if cloudflared service install "$CLOUDFLARE_TOKEN"; then
+                    success "Cloudflare tunnel service installed."
+                else
                     warning "Cloudflare service setup failed."
+                fi
                 ;;
             *)
                 warning "Cloudflare service setup cancelled."
@@ -320,38 +322,46 @@ else
     fi
 
     unset CLOUDFLARE_TOKEN
-fi
-
-# -------------------- START APPLICATION -------------------
-
-printf "\n"
-line
-printf "${PURPLE}${BOLD}       PHASE 06 — STARTING JTG${RESET}\n"
-line
-
-cd "$APP_DIR"
-
-info "Starting Jtg on port $APP_PORT..."
-
-if PORT="$APP_PORT" npm run start; then
-    success "Jtg start process exited."
 else
-    warning "npm run start failed. Trying emergency development mode..."
-    PORT="$APP_PORT" npm run dev
+    warning "Cloudflare tunnel setup skipped."
 fi
 
-# -------------------- FINAL STATUS ------------------------
+# -------------------- FINAL STATUS -------------------------
 
 printf "\n"
 line
-printf "${GREEN}${BOLD}       INSANE HOST SETUP FINISHED${RESET}\n"
+printf "${PURPLE}${BOLD}       INSTALLATION CHECKS${RESET}\n"
 line
 
-printf "${CYAN}Application directory: ${WHITE}%s${RESET}\n" "$APP_DIR"
-printf "${CYAN}Configured port: ${WHITE}%s${RESET}\n" "$APP_PORT"
+command -v node >/dev/null 2>&1 && success "Node.js is available." || warning "Node.js unavailable."
+command -v npm >/dev/null 2>&1 && success "npm is available." || warning "npm unavailable."
+command -v cloudflared >/dev/null 2>&1 && success "cloudflared is available." || warning "cloudflared unavailable."
+
+fire_animation
+show_logo
+
+line
+printf "${GREEN}${BOLD}       INSTALLATION STEPS FINISHED${RESET}\n"
+line
+
+# -------------------- APPLICATION START -------------------
 
 printf "\n"
-printf "${WHITE}${BOLD}           YOUR VPS, YOUR POWER!${RESET}\n"
 line
+printf "${PURPLE}${BOLD}       PHASE 06 — APPLICATION START${RESET}\n"
+line
+
+cd "$SCRIPT_DIR/Jtg"
+
+info "Starting Jtg on port 6767 with npm run start..."
+
+if PORT=6767 npm run start; then
+    success "npm run start exited successfully."
+else
+    warning "npm run start failed. Trying emergency fallback: npm run dev"
+    PORT=6767 npm run dev
+fi
+
+cd "$SCRIPT_DIR"
 
 exit 0
