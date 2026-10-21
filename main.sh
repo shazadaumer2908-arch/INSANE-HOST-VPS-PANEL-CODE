@@ -1,258 +1,335 @@
 #!/usr/bin/env bash
+
+# ==========================================================
+#                    INSANE HOST
+#              INSANE HOST DEVELOPMENT
+#                  ULTIMATE EDITION
+# ==========================================================
+
 set -Eeuo pipefail
 
-# ============================================================
-#  INSANE HOST | ULTIMATE VPS INSTALLER
-#  V-Panel + Node.js + npm + Cloudflare Tunnel
-#  Credits: INSANE HOST Development Team
-# ============================================================
+# -------------------- COLORS ------------------------------
 
-VERSION="2.1"
+if [[ -t 1 ]]; then
+    RED='\033[1;31m'
+    GREEN='\033[1;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[1;34m'
+    PURPLE='\033[1;35m'
+    CYAN='\033[1;36m'
+    WHITE='\033[1;37m'
+    GRAY='\033[0;90m'
+    BOLD='\033[1m'
+    RESET='\033[0m'
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    PURPLE=''
+    CYAN=''
+    WHITE=''
+    GRAY=''
+    BOLD=''
+    RESET=''
+fi
+
 PANEL_DIR="/opt/vpanel-pro"
+PANEL_REPO="https://github.com/nobita329/vpanel-pro.git"
 
-# Terminal colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-DIM='\033[2m'
-BOLD='\033[1m'
-NC='\033[0m'
-
-# ============================================================
-#  TERMINAL UI
-# ============================================================
+# -------------------- FUNCTIONS ---------------------------
 
 line() {
-    printf "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+    printf "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
 }
 
 info() {
-    printf "  ${CYAN}➜${NC} %s\n" "$1"
+    printf "${CYAN}  ➜ ${WHITE}%s${RESET}\n" "$1"
 }
 
 success() {
-    printf "  ${GREEN}✔${NC} %s\n" "$1"
+    printf "${GREEN}  ✔ ${WHITE}%s${RESET}\n" "$1"
 }
 
-warn() {
-    printf "  ${YELLOW}!${NC} %s\n" "$1"
+warning() {
+    printf "${YELLOW}  ⚠ %s${RESET}\n" "$1"
 }
 
-fail() {
-    printf "\n  ${RED}✖ ERROR:${NC} %s\n\n" "$1" >&2
+error() {
+    printf "${RED}  ✖ %s${RESET}\n" "$1" >&2
 }
 
-section() {
-    printf "\n"
-    line
-    printf "  ${MAGENTA}${BOLD}%s${NC}\n" "$1"
-    line
+loading() {
+    local message="$1"
+    local frames=('🔥' '✨' '⚡' '🔥' '💫' '⚡')
+    local i
+
+    for i in {1..12}; do
+        printf "\r${PURPLE}  %s ${CYAN}%s${RESET}" \
+            "${frames[$((i % ${#frames[@]}))]}" "$message"
+        sleep 0.08
+    done
+
+    printf "\r%*s\r" 100 ""
 }
 
-# ============================================================
-#  ERROR HANDLING
-# ============================================================
+fire_animation() {
+    local frames=(
+        '🔥       🔥'
+        ' 🔥     🔥 '
+        '  🔥   🔥  '
+        '   🔥 🔥   '
+        '    🔥    '
+        '   🔥 🔥   '
+        '  🔥   🔥  '
+        ' 🔥     🔥 '
+    )
 
-trap 'status=$?; printf "\n\033[0;31m[ERROR]\033[0m Installer failed near line %s (exit code %s).\n" "$LINENO" "$status" >&2; exit "$status"' ERR
+    local frame
 
-# ============================================================
-#  INSANE HOST LOGO
-# ============================================================
+    for frame in "${frames[@]}"; do
+        printf "\r${RED}${BOLD}%s${RESET}" "$frame"
+        sleep 0.08
+    done
+
+    printf "\r                    \r"
+}
 
 show_logo() {
-    clear 2>/dev/null || true
+    printf "${RED}${BOLD}"
+    cat <<'EOF'
+██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗
+██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝
+██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗
+██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝
+██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗
+╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝
 
-    printf "${CYAN}${BOLD}"
-    cat <<'LOGO'
+██╗  ██╗ ██████╗ ███████╗████████╗
+██║  ██║██╔═══██╗██╔════╝╚══██╔══╝
+███████║██║   ██║███████╗   ██║
+██╔══██║██║   ██║╚════██║   ██║
+██║  ██║╚██████╔╝███████║   ██║
+╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝
+EOF
+    printf "${RESET}\n"
 
-  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗
-  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝
-  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗
-  ██║██║╚██╗██║╚════██║██╔══██╗██║╚██╗██║██╔══╝
-  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗
-  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝
-
-  ██╗  ██╗ ██████╗ ███████╗████████╗
-  ██║  ██║██╔═══██╗██╔════╝╚══██╔══╝
-  ███████║██║   ██║███████╗   ██║
-  ██╔══██║██║   ██║╚════██║   ██║
-  ██║  ██║╚██████╔╝███████║   ██║
-  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝
-
-LOGO
-    printf "${NC}"
-
-    line
-    printf "${WHITE}${BOLD}             ULTIMATE VPS INSTALLER${NC}\n"
-    printf "${YELLOW}                    VERSION %s${NC}\n" "$VERSION"
-    line
-
-    printf "\n"
-    printf "  ${GREEN}◆${NC} V-Panel Control Panel\n"
-    printf "  ${GREEN}◆${NC} Node.js + npm\n"
-    printf "  ${GREEN}◆${NC} Cloudflare Tunnel\n"
-    printf "  ${GREEN}◆${NC} Automated Installation\n"
-    printf "\n"
-
-    printf "  ${MAGENTA}Developed and maintained by INSANE HOST${NC}\n"
-    printf "  ${CYAN}Credits: INSANE HOST Development Team${NC}\n"
-
-    line
-    printf "\n"
+    printf "${WHITE}${BOLD}       INSANE HOST DEVELOPMENT${RESET}\n"
+    printf "${CYAN}          Developed by INSANE HOST${RESET}\n"
+    printf "${GRAY}    Credits: INSANE HOST Development Team${RESET}\n"
 }
 
-# ============================================================
-#  STARTUP CHECKS
-# ============================================================
+handle_error() {
+    local code=$?
 
+    printf "\n"
+    line
+    error "An installation command failed (exit code: $code)."
+    warning "Review the error above before trying again."
+    line
+
+    exit "$code"
+}
+
+trap handle_error ERR
+
+# -------------------- STARTUP -----------------------------
+
+clear 2>/dev/null || true
+
+printf "\n"
+fire_animation
 show_logo
 
-if [[ "$EUID" -ne 0 ]]; then
-    fail "Please run this installer as root."
-    printf "  Run: sudo bash main.sh\n"
+line
+
+printf "${PURPLE}${BOLD}           ULTIMATE VPS INSTALLER${RESET}\n"
+printf "${GRAY}       V-Panel | Node.js | Cloudflare${RESET}\n"
+
+line
+
+loading "Initializing INSANE HOST..."
+success "Installer initialized."
+
+# -------------------- ROOT CHECK --------------------------
+
+if [[ "${EUID}" -ne 0 ]]; then
+    error "Please run this installer as root."
+    printf "\nRun: ${YELLOW}sudo -i${RESET}\n"
     exit 1
 fi
 
-if ! command -v apt-get >/dev/null 2>&1; then
-    fail "This installer requires an Ubuntu/Debian-based system."
-    exit 1
-fi
+# -------------------- OS CHECK ----------------------------
 
-if [[ ! -r /etc/os-release ]]; then
-    fail "Cannot identify the operating system."
+if [[ ! -f /etc/os-release ]]; then
+    error "Cannot identify the operating system."
     exit 1
 fi
 
 # shellcheck disable=SC1091
 source /etc/os-release
 
-if [[ "${ID:-}" != "ubuntu" && "${ID:-}" != "debian" ]]; then
-    warn "This script is intended for Ubuntu or Debian."
-    read -r -p "Continue anyway? [y/N]: " CONTINUE
-    [[ "$CONTINUE" =~ ^[Yy]$ ]] || exit 1
-fi
+case "${ID:-}" in
+    ubuntu|debian)
+        success "Supported OS: ${PRETTY_NAME:-Linux}"
+        ;;
+    *)
+        error "This installer supports Ubuntu and Debian."
+        exit 1
+        ;;
+esac
 
-export DEBIAN_FRONTEND=noninteractive
+# -------------------- PASSWORD INPUT ----------------------
 
-# ============================================================
-#  WELCOME
-# ============================================================
+printf "\n"
+line
+printf "${PURPLE}${BOLD}       V-PANEL ADMIN PASSWORD${RESET}\n"
+line
 
-section "WELCOME TO INSANE HOST"
+printf "${CYAN}Enter your preferred V-Panel admin password.${RESET}\n"
+printf "${GRAY}Your password will be hidden while typing.${RESET}\n\n"
 
-printf "  ${WHITE}This installer will set up:${NC}\n\n"
-printf "  ${CYAN}[1]${NC} Required system packages\n"
-printf "  ${CYAN}[2]${NC} Node.js\n"
-printf "  ${CYAN}[3]${NC} npm\n"
-printf "  ${CYAN}[4]${NC} V-Panel\n"
-printf "  ${CYAN}[5]${NC} Cloudflare Tunnel\n"
+while true; do
+    PANEL_PASSWORD=""
 
-printf "\n  ${YELLOW}V-Panel admin password: admin12${NC}\n\n"
+    if ! IFS= read -r -s -p "  Enter password: " PANEL_PASSWORD; then
+        printf "\n"
+        error "Unable to read password."
+        exit 1
+    fi
 
-read -r -p "  Start installation? [Y/n]: " CONFIRM
-CONFIRM="${CONFIRM:-Y}"
+    printf "\n"
 
-if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-    info "Installation cancelled."
-    exit 0
-fi
+    if [[ -z "$PANEL_PASSWORD" ]]; then
+        warning "Password cannot be empty."
+        continue
+    fi
 
-# ============================================================
-#  STEP 1: SYSTEM PREPARATION
-# ============================================================
+    PANEL_CONFIRM=""
 
-section "STEP 1/5 - PREPARING YOUR SYSTEM"
+    if ! IFS= read -r -s -p "  Confirm password: " PANEL_CONFIRM; then
+        printf "\n"
+        error "Unable to confirm password."
+        exit 1
+    fi
+
+    printf "\n"
+
+    if [[ "$PANEL_PASSWORD" != "$PANEL_CONFIRM" ]]; then
+        warning "Passwords do not match. Try again."
+        unset PANEL_PASSWORD PANEL_CONFIRM
+        continue
+    fi
+
+    unset PANEL_CONFIRM
+    success "Password received."
+    break
+done
+
+# -------------------- SYSTEM PREPARATION ------------------
+
+printf "\n"
+line
+printf "${PURPLE}${BOLD}       PHASE 01 — SYSTEM PREPARATION${RESET}\n"
+line
 
 info "Updating package lists..."
 apt-get update
 
-info "Installing required tools..."
-apt-get install -y git curl ca-certificates
+info "Installing required utilities..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    git curl ca-certificates gnupg
 
 success "System preparation completed."
 
-# ============================================================
-#  STEP 2: NODE.JS AND NPM
-# ============================================================
+# -------------------- NODE.JS -----------------------------
 
-section "STEP 2/5 - INSTALLING NODE.JS AND NPM"
+printf "\n"
+line
+printf "${PURPLE}${BOLD}       PHASE 02 — NODE.JS INSTALLATION${RESET}\n"
+line
 
-info "Installing Node.js first..."
-apt-get install -y nodejs
-
-if ! command -v node >/dev/null 2>&1; then
-    fail "Node.js was not found after installation."
-    exit 1
-fi
-
-success "Node.js installed."
-printf "  ${DIM}Version: %s${NC}\n" "$(node --version)"
+info "Installing Node.js..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+success "Node.js installation command completed."
 
 info "Installing npm..."
-apt-get install -y npm
+DEBIAN_FRONTEND=noninteractive apt-get install -y npm
+success "npm installation command completed."
 
-if ! command -v npm >/dev/null 2>&1; then
-    fail "npm was not found after installation."
-    exit 1
+if command -v node >/dev/null 2>&1; then
+    printf "${CYAN}  Node.js version: ${WHITE}"
+    node --version
+else
+    warning "Node.js command was not found."
 fi
 
-success "npm installed."
-printf "  ${DIM}Version: %s${NC}\n" "$(npm --version)"
+if command -v npm >/dev/null 2>&1; then
+    printf "${CYAN}  npm version: ${WHITE}"
+    npm --version
+else
+    warning "npm command was not found."
+fi
 
-# ============================================================
-#  STEP 3: V-PANEL
-# ============================================================
+# -------------------- V-PANEL -----------------------------
 
-section "STEP 3/5 - INSTALLING V-PANEL"
+printf "\n"
+line
+printf "${PURPLE}${BOLD}       PHASE 03 — V-PANEL INSTALLATION${RESET}\n"
+line
 
 if [[ -d "$PANEL_DIR/.git" ]]; then
-    info "V-Panel repository already exists."
+    warning "Existing V-Panel repository found."
+elif [[ -e "$PANEL_DIR" ]]; then
+    error "$PANEL_DIR exists but is not a Git repository."
+    error "Inspect or back up this directory before continuing."
+    exit 1
 else
-    if [[ -e "$PANEL_DIR" ]]; then
-        fail "$PANEL_DIR exists but is not a Git repository."
-        printf "  Inspect this directory before continuing.\n"
-        exit 1
-    fi
-
-    info "Cloning the V-Panel repository..."
-    git clone https://github.com/nobita329/vpanel-pro.git "$PANEL_DIR"
+    info "Downloading V-Panel repository..."
+    git clone "$PANEL_REPO" "$PANEL_DIR"
+    success "Repository downloaded."
 fi
 
-cd "$PANEL_DIR"
-
-if [[ ! -f install.sh ]]; then
-    fail "V-Panel install.sh was not found."
+if [[ ! -f "$PANEL_DIR/install.sh" ]]; then
+    error "V-Panel install.sh was not found."
     exit 1
 fi
 
 printf "\n"
+warning "The V-Panel installer will receive your chosen password."
+warning "Continue only if you trust this repository."
+
+printf "${YELLOW}Continue with V-Panel installation? [y/N]: ${RESET}"
+read -r PANEL_CONFIRM || true
+
+case "$PANEL_CONFIRM" in
+    y|Y|yes|YES)
+        ;;
+    *)
+        unset PANEL_PASSWORD
+        error "V-Panel installation cancelled."
+        exit 1
+        ;;
+esac
+
+cd "$PANEL_DIR"
+
+info "Starting V-Panel installer..."
+
+# Assumes the upstream installer supports --admin-pass.
+bash install.sh --admin-pass "$PANEL_PASSWORD"
+
+unset PANEL_PASSWORD
+success "V-Panel installer process finished."
+
+# -------------------- CLOUDFLARE --------------------------
+
+printf "\n"
 line
-printf "  ${WHITE}${BOLD}V-PANEL SETUP${NC}\n"
+printf "${PURPLE}${BOLD}       PHASE 04 — CLOUDFLARE INSTALLATION${RESET}\n"
 line
-printf "  ${CYAN}Admin password requested:${NC} ${GREEN}admin12${NC}\n\n"
 
-warn "The V-Panel installer will make system-level changes."
-read -r -p "  Continue with V-Panel installation? [y/N]: " PANEL_CONFIRM
-
-if [[ "$PANEL_CONFIRM" =~ ^[Yy]$ ]]; then
-    info "Starting the V-Panel installer..."
-    bash install.sh --admin-pass 'admin12'
-    success "V-Panel installer finished."
-else
-    warn "V-Panel installation skipped."
-fi
-
-# ============================================================
-#  STEP 4: CLOUDFLARE TUNNEL
-# ============================================================
-
-section "STEP 4/5 - INSTALLING CLOUDFLARE TUNNEL"
-
-info "Preparing Cloudflare signing key..."
+info "Preparing Cloudflare package repository..."
 
 install -d -m 0755 /usr/share/keyrings
 
@@ -262,124 +339,164 @@ curl -fsSL \
 
 chmod 0644 /usr/share/keyrings/cloudflare-main.gpg
 
-info "Adding Cloudflare package repository..."
-
 printf '%s\n' \
     'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' \
     > /etc/apt/sources.list.d/cloudflared.list
 
-info "Updating package lists..."
+info "Refreshing package lists..."
 apt-get update
 
 info "Installing cloudflared..."
-apt-get install -y cloudflared
+DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
 
-if ! command -v cloudflared >/dev/null 2>&1; then
-    fail "cloudflared was not found after installation."
-    exit 1
+success "cloudflared installation command completed."
+
+if command -v cloudflared >/dev/null 2>&1; then
+    cloudflared --version
 fi
 
-success "Cloudflare Tunnel package installed."
-printf "  ${DIM}%s${NC}\n" "$(cloudflared --version)"
-
-# ============================================================
-#  STEP 5: CLOUDFLARE SERVICE BOX
-# ============================================================
-
-section "STEP 5/5 - CLOUDFLARE TUNNEL SETUP"
+# -------------------- CLOUDFLARE TUNNEL -------------------
 
 printf "\n"
-printf "  ${CYAN}╔══════════════════════════════════════════════════╗${NC}\n"
-printf "  ${CYAN}║${WHITE}${BOLD}            INSANE HOST - CLOUDFLARE             ${NC}${CYAN}║${NC}\n"
-printf "  ${CYAN}╠══════════════════════════════════════════════════╣${NC}\n"
-printf "  ${CYAN}║${NC}                                                  ${CYAN}║${NC}\n"
-printf "  ${CYAN}║${NC}  ${GREEN}[1]${NC} Paste your Cloudflare Tunnel TOKEN          ${CYAN}║${NC}\n"
-printf "  ${CYAN}║${NC}  ${GREEN}[2]${NC} Paste the COMPLETE service install COMMAND  ${CYAN}║${NC}\n"
-printf "  ${CYAN}║${NC}                                                  ${CYAN}║${NC}\n"
-printf "  ${CYAN}║${NC}  ${YELLOW}BOTH METHODS ARE SUPPORTED${NC}                    ${CYAN}║${NC}\n"
-printf "  ${CYAN}║${NC}  ${DIM}Input is hidden for security.${NC}                  ${CYAN}║${NC}\n"
-printf "  ${CYAN}║${NC}                                                  ${CYAN}║${NC}\n"
-printf "  ${CYAN}╚══════════════════════════════════════════════════╝${NC}\n"
+line
+printf "${PURPLE}${BOLD}       PHASE 05 — CLOUDFLARE TUNNEL SETUP${RESET}\n"
+line
 
-printf "\n"
-printf "  ${WHITE}Paste your token or service install command.${NC}\n"
-printf "  ${DIM}Press ENTER to skip this step.${NC}\n\n"
+printf "${CYAN}${BOLD}"
+cat <<'EOF'
+  ╔════════════════════════════════════════════════════╗
+  ║             CLOUDFLARE TUNNEL SETUP                ║
+  ╠════════════════════════════════════════════════════╣
+  ║                                                    ║
+  ║           BOTH METHODS ARE SUPPORTED               ║
+  ║                                                    ║
+  ║  METHOD 1: Paste your tunnel token                 ║
+  ║  METHOD 2: Paste the service install command       ║
+  ║                                                    ║
+  ║  Example: cloudflared service install YOUR_TOKEN    ║
+  ║                                                    ║
+  ║  Leave blank to skip this step.                    ║
+  ╚════════════════════════════════════════════════════╝
+EOF
+printf "${RESET}\n"
 
-printf "  ${MAGENTA}Cloudflare input > ${NC}"
+printf "${GRAY}Input is hidden for privacy.${RESET}\n"
 
 CLOUDFLARE_INPUT=""
-IFS= read -r -s CLOUDFLARE_INPUT || true
-printf "\n\n"
+IFS= read -r -s -p "  Cloudflare input: " CLOUDFLARE_INPUT || true
+printf "\n"
 
-CLOUDFLARE_TOKEN=""
-
-if [[ -z "$CLOUDFLARE_INPUT" ]]; then
-    warn "Cloudflare service setup skipped."
-
-elif [[ "$CLOUDFLARE_INPUT" =~ ^[A-Za-z0-9._=+/-]+$ ]]; then
-    # A token entered directly.
-    CLOUDFLARE_TOKEN="$CLOUDFLARE_INPUT"
-
-elif [[ "$CLOUDFLARE_INPUT" =~ ^[[:space:]]*(sudo[[:space:]]+)?(cloudflared|/usr/bin/cloudflared)[[:space:]]+service[[:space:]]+install[[:space:]]+([A-Za-z0-9._=+/-]+)[[:space:]]*$ ]]; then
-    # Accept a simple service-install command without executing it as shell.
-    CLOUDFLARE_TOKEN="${BASH_REMATCH[3]}"
-
+if [[ -z "${CLOUDFLARE_INPUT//[[:space:]]/}" ]]; then
+    warning "Cloudflare service setup skipped."
 else
-    warn "Input format not recognized."
-    warn "No command was executed."
-fi
+    CLOUDFLARE_TOKEN=""
 
-unset CLOUDFLARE_INPUT
+    if [[ "$CLOUDFLARE_INPUT" =~ ^[A-Za-z0-9._=+/-]+$ ]]; then
+        CLOUDFLARE_TOKEN="$CLOUDFLARE_INPUT"
 
-if [[ -n "$CLOUDFLARE_TOKEN" ]]; then
-    printf "\n"
-    line
-    printf "  ${YELLOW}${BOLD}CONFIRM CLOUDFLARE SETUP${NC}\n"
-    line
-    printf "  This will install the Cloudflare Tunnel service.\n"
-    printf "  Your token will not be printed on screen.\n\n"
-
-    read -r -p "  Continue? [y/N]: " CF_CONFIRM
-
-    if [[ "$CF_CONFIRM" =~ ^[Yy]$ ]]; then
-        info "Installing the Cloudflare service..."
-
-        if cloudflared service install "$CLOUDFLARE_TOKEN"; then
-            success "Cloudflare service installation completed."
-            info "Check the Cloudflare dashboard to verify connectivity."
-        else
-            warn "Service installation failed."
-            warn "Check the token and your system's service manager."
-        fi
+    elif [[ "$CLOUDFLARE_INPUT" =~ ^[[:space:]]*(sudo[[:space:]]+)?(cloudflared|/usr/bin/cloudflared)[[:space:]]+service[[:space:]]+install[[:space:]]+([A-Za-z0-9._=+/-]+)[[:space:]]*$ ]]; then
+        CLOUDFLARE_TOKEN="${BASH_REMATCH[3]}"
     else
-        warn "Cloudflare service setup cancelled."
+        warning "Input format not recognized."
+        warning "Paste a token or supported service install command."
+    fi
+
+    unset CLOUDFLARE_INPUT
+
+    if [[ -n "$CLOUDFLARE_TOKEN" ]]; then
+        printf "\n${YELLOW}Install the Cloudflare service now? [y/N]: ${RESET}"
+        read -r CF_CONFIRM || true
+
+        case "$CF_CONFIRM" in
+            y|Y|yes|YES)
+                if cloudflared service install "$CLOUDFLARE_TOKEN"; then
+                    success "Cloudflare service installation command completed."
+                else
+                    warning "Cloudflare service setup failed."
+                    warning "Check the token and system support."
+                fi
+                ;;
+            *)
+                warning "Cloudflare service setup cancelled."
+                ;;
+        esac
     fi
 
     unset CLOUDFLARE_TOKEN
 fi
 
-# ============================================================
-#  COMPLETION SCREEN
-# ============================================================
-
-section "INSANE HOST INSTALLATION FINISHED"
+# -------------------- FINAL STATUS ------------------------
 
 printf "\n"
-printf "  ${GREEN}${BOLD}✔ INSTALLER PROCESS COMPLETED${NC}\n\n"
-printf "  ${CYAN}Node.js:${NC} %s\n" "$(node --version)"
-printf "  ${CYAN}npm:${NC} %s\n" "$(npm --version)"
-printf "  ${CYAN}Cloudflared:${NC} installed\n"
-printf "  ${CYAN}V-Panel password requested:${NC} admin12\n"
+line
+printf "${PURPLE}${BOLD}       PHASE 06 — FINAL STATUS CHECK${RESET}\n"
+line
+
+if command -v node >/dev/null 2>&1; then
+    success "Node.js command is available."
+else
+    warning "Node.js command is unavailable."
+fi
+
+if command -v npm >/dev/null 2>&1; then
+    success "npm command is available."
+else
+    warning "npm command is unavailable."
+fi
+
+if command -v cloudflared >/dev/null 2>&1; then
+    success "cloudflared command is available."
+else
+    warning "cloudflared command is unavailable."
+fi
+
+if command -v ss >/dev/null 2>&1; then
+    if ss -ltnH | awk '$4 ~ /:3001$/ { found=1 } END { exit !found }'; then
+        success "A service is listening on TCP port 3001."
+    else
+        warning "No TCP listener detected on port 3001."
+        warning "A service and firewall configuration may still be required."
+    fi
+else
+    warning "The ss utility is unavailable; cannot check port 3001."
+fi
+
+# -------------------- ULTIMATE FINALE ----------------------
 
 printf "\n"
-printf "  ${MAGENTA}Developed and maintained by INSANE HOST${NC}\n"
-printf "  ${CYAN}Credits: INSANE HOST Development Team${NC}\n"
+fire_animation
+fire_animation
+
+clear 2>/dev/null || true
+
+printf "\n"
+show_logo
 
 line
-printf "  ${WHITE}Thank you for choosing INSANE HOST!${NC}\n"
+
+printf "${GREEN}${BOLD}       INSTALLATION STEPS FINISHED${RESET}\n"
+printf "\n"
+
+if command -v ss >/dev/null 2>&1 &&
+   ss -ltnH | awk '$4 ~ /:3001$/ { found=1 } END { exit !found }'; then
+    printf "${GREEN}${BOLD}  YOUR SERVICE IS LISTENING ON PORT 3001${RESET}\n"
+else
+    printf "${YELLOW}${BOLD}  PORT 3001 IS NOT CURRENTLY LISTENING${RESET}\n"
+fi
+
+printf "\n"
+printf "${PURPLE}${BOLD}"
+cat <<'EOF'
+       ALSO DISCOVER OTHER COMMANDS OF
+            INSANE HOST DEVELOPMENT
+EOF
+printf "${RESET}\n"
+
+line
+
+printf "${WHITE}${BOLD}           YOUR VPS, YOUR POWER!${RESET}\n"
+
 line
 printf "\n"
 
-# ============================================================
-#  END
-# ============================================================
+exit 0
