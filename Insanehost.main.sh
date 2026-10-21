@@ -14,9 +14,9 @@ show_banner() {
     printf "${RED}${BOLD}"
     cat <<'EOF'
 ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗
-██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝
-██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗
-██║██║╚██╗██║╚════██║╚██╔══╝██║╚██╗██║╔══╝
+██║████╗  ██║╔════██║██╔══██╗████╗  ██║╔════██║
+██║██╔██╗ ██║███████║███████║██╔██╗ ██║█████╗
+██║██║╚██╗██║╔════██║██╔══██║██║╚██╗██║╔══╝
 ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗
 ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝
 
@@ -34,7 +34,6 @@ EOF
 }
 
 loading_animation() {
-    local frame
     for frame in \
         "[■□□□□□□□□□] 10% - INITIALIZING" \
         "[■■■□□□□□□□] 30% - LOADING VPS TOOLS" \
@@ -48,7 +47,6 @@ loading_animation() {
 
 goodbye_animation() {
     clear
-    local frame
     for frame in \
         "[■□□□□□□□□□] 10%" \
         "[■■■□□□□□□□] 30%" \
@@ -57,6 +55,7 @@ goodbye_animation() {
         printf "\r${ORANGE}${BOLD}%-35s${RESET}" "$frame"
         sleep 0.2
     done
+
     printf "\n\n${RED}${BOLD}"
     echo "  ╔══════════════════════════════════════════╗"
     echo "  ║       THANKS FOR USING INSANE HOST       ║"
@@ -74,11 +73,11 @@ run_pterodactyl() {
     clear
     printf "${RED}${BOLD}===== INSANE HOST - PTERODACTYL =====${RESET}\n\n"
 
-    if ! command -v curl >/dev/null 2>&1; then
-        echo "curl is not installed."
+    command -v curl >/dev/null 2>&1 || {
+        echo "curl is required."
         pause_menu
         return
-    fi
+    }
 
     local installer="/tmp/insane-host-ptero-installer.sh"
 
@@ -92,9 +91,9 @@ run_pterodactyl() {
     fi
 
     echo
-    echo "This will run the downloaded third-party installer."
-    echo "Automatic selection attempts option 2, then option 1."
-    read -rp "Continue? [y/N]: " confirm
+    echo "Automatic selection will attempt option 2, then option 1."
+    echo "The third-party installer will then remain interactive."
+    read -rp "Run installer? [y/N]: " confirm
 
     case "$confirm" in
         y|Y|yes|YES) ;;
@@ -107,52 +106,49 @@ run_pterodactyl() {
     esac
 
     if ! command -v expect >/dev/null 2>&1; then
-        echo "Installing Expect..."
         if command -v apt-get >/dev/null 2>&1; then
-            apt-get update && apt-get install -y expect
+            echo "Installing Expect..."
+            apt-get update && apt-get install -y expect || {
+                echo "Could not install Expect."
+                rm -f "$installer"
+                pause_menu
+                return
+            }
         else
-            echo "Install Expect manually, then try again."
+            echo "Install Expect manually to use automatic selection."
             rm -f "$installer"
             pause_menu
             return
         fi
     fi
 
-    if command -v expect >/dev/null 2>&1; then
-        INSANE_INSTALLER="$installer" expect <<'EXPECT_SCRIPT'
+    INSANE_INSTALLER="$installer" expect <<'EXPECT_SCRIPT'
 set timeout -1
-set installer $env(INSANE_INSTALLER)
-spawn bash $installer
+spawn bash $env(INSANE_INSTALLER)
 
-# Match common menu prompts. Exact matching may need adjustment
-# if the installer's wording differs.
+# Try to select the first menu option.
 expect {
     -re {(?i)(choice|option|select|selection|enter.*number)} {
         send -- "2\r"
     }
-    timeout { puts "\nNo recognizable first menu prompt."; interact; exit }
     eof { exit }
 }
 
+# Try to select the next menu option.
 expect {
     -re {(?i)(choice|option|select|selection|enter.*number)} {
         send -- "1\r"
     }
-    timeout { puts "\nNo recognizable second menu prompt."; interact; exit }
     eof { exit }
 }
 
-# Keep the terminal interactive so the user can type.
+# Give the terminal back to the user.
 interact
 EXPECT_SCRIPT
-    fi
 
-    local status=$?
     rm -f "$installer"
-
     echo
-    echo "Installer session ended (status: $status)."
-    echo "Returning to INSANE HOST main menu..."
+    echo "Installer closed. Returning to INSANE HOST..."
     sleep 1
 }
 
@@ -183,7 +179,7 @@ wings_menu() {
     clear
     printf "${RED}${BOLD}============= WINGS =============${RESET}\n\n"
     echo "Wings is separate from the Panel option."
-    echo "Wings functionality is waiting for your instructions."
+    echo "Wings functionality will be added after your instructions."
     pause_menu
 }
 
