@@ -1,4 +1,4 @@
-
+```bash
 #!/usr/bin/env bash
 
 # ==========================================================
@@ -68,7 +68,7 @@ loading() {
         sleep 0.08
     done
 
-    printf "\r%*s\r" 100 ""
+    printf "\r%\*s\r" 100 ""
 }
 
 fire_animation() {
@@ -94,7 +94,7 @@ fire_animation() {
 }
 
 show_logo() {
-    printf "${RED}${BOLD}"
+    printf "${BLUE}${BOLD}"
     cat <<'EOF'
 ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗
 ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝
@@ -365,3 +365,4 @@ fi
 cd "$SCRIPT_DIR"
 
 exit 0
+```
