@@ -1,4 +1,4 @@
-```bash
+bash
 #!/usr/bin/env bash
 
 # ==========================================================
@@ -9,199 +9,143 @@
 
 set -Eeuo pipefail
 
-# -------------------- COLORS ------------------------------
-
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
-WHITE='\033[1;37m'
 RED='\033[1;31m'
-CYAN='\033[1;36m'
 RESET='\033[0m'
-
-# -------------------- CONFIGURATION -----------------------
 
 REPO_URL="https://github.com/foxytouxxx/freeroot.git"
 TARGET="$HOME/freeroot"
 
-ROOTFS_URL="https://cdimages.ubuntu.com/ubuntu-base/releases/20.04.4/release/ubuntu-base-20.04.4-base-amd64.tar.gz"
-ROOTFS_ARCHIVE="$HOME/rootfs.tar.gz"
-
 SSHX_URL="https://s3.amazonaws.com/sshx/sshx-x86_64-unknown-linux-musl.tar.gz"
-SSHX_ARCHIVE="sshx-x86_64-unknown-linux-musl.tar.gz"
-
-# -------------------- TERMINAL UI -------------------------
-
-banner() {
-    clear || true
-
-    echo -e "${GREEN}"
-    echo '  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗'
-    echo '  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝'
-    echo '  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  '
-    echo '  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  '
-    echo '  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗'
-    echo '  ╚═╝╚═╝  ╚════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚══════╝'
-
-    echo -e "${YELLOW}"
-    echo '              INSANE HOST DEVELOPMENT'
-    echo '                 ULTIMATE EDITION'
-    echo -e "${RESET}"
-
-    echo '=========================================================='
-    echo
-}
+SSHX_ARCHIVE="$HOME/sshx-x86_64-unknown-linux-musl.tar.gz"
 
 info() {
-    echo -e "${GREEN}[SUCCESS]${RESET} $*"
+    printf "${GREEN}[INSANE HOST]${RESET} %s\n" "$*"
 }
 
 step() {
-    echo
-    echo -e "${YELLOW}==> $*${RESET}"
-}
-
-warn() {
-    echo -e "${YELLOW}[WARNING]${RESET} $*" >&2
-}
-
-error() {
-    echo -e "${RED}[ERROR]${RESET} $*" >&2
+    printf "\n${YELLOW}==> %s${RESET}\n" "$*"
 }
 
 fail() {
-    error "$*"
+    printf "${RED}[ERROR] %s${RESET}\n" "$*" >&2
     exit 1
 }
 
-# -------------------- ERROR HANDLING ----------------------
+banner() {
+    clear 2>/dev/null || true
 
-trap 'error "Command failed at line $LINENO. Check the message above."' ERR
-
-# -------------------- START -------------------------------
+    printf "${GREEN}"
+    printf '  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗\n'
+    printf '  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝\n'
+    printf '  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  \n'
+    printf '  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  \n'
+    printf '  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗\n'
+    printf '  ╚═╝╚═╝  ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚══════╝\n'
+    printf "${YELLOW}"
+    printf '             INSANE HOST DEVELOPMENT\n'
+    printf '                  ULTIMATE EDITION\n'
+    printf "${RESET}\n"
+    printf '%s\n\n' '=========================================================='
+}
 
 banner
 
-info "Welcome to INSANE HOST Ultimate Root Tool!"
+info "Starting INSANE HOST installer..."
 
-# -------------------- SAFETY CHECK ------------------------
+# -------------------- DEPENDENCIES -------------------------
 
-step "Checking installation path"
+step "Checking dependencies"
 
-[[ "$TARGET" == "$HOME/freeroot" ]] ||
-    fail "Unexpected installation path."
+for cmd in git curl tar; do
+    command -v "$cmd" >/dev/null 2>&1 ||
+        fail "Missing command: $cmd"
+done
 
-SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+info "Dependencies verified."
 
-case "$SCRIPT_PATH" in
-    "$TARGET"/*)
-        fail "Save this installer outside ~/freeroot, such as /root/root.sh."
+# -------------------- ARCHITECTURE -------------------------
+
+step "Checking CPU architecture"
+
+ARCH="$(uname -m)"
+
+case "$ARCH" in
+    x86_64)
+        SSHX_FILE="sshx-x86_64-unknown-linux-musl.tar.gz"
+        ;;
+    aarch64|arm64)
+        fail "The configured SSHX download is for x86_64. Install an ARM64-compatible SSHX build first."
+        ;;
+    *)
+        fail "Unsupported CPU architecture: $ARCH"
         ;;
 esac
 
-# -------------------- DEPENDENCIES ------------------------
+info "Architecture: $ARCH"
 
-step "Checking required commands"
+# -------------------- REPOSITORY ---------------------------
 
-for cmd in git wget tar curl; do
-    command -v "$cmd" >/dev/null 2>&1 ||
-        fail "Required command '$cmd' is missing."
-done
-
-info "All required commands are available."
-
-# -------------------- CLONE REPOSITORY ---------------------
-
-step "Cloning freeroot repository"
+step "Preparing repository"
 
 if [[ -e "$TARGET" || -L "$TARGET" ]]; then
-    fail "~/freeroot already exists. Move it or choose another target before running this installer."
+    fail "$TARGET already exists. This installer will not delete your files. Rename or move the existing directory before retrying."
 fi
 
-git clone "$REPO_URL" "$TARGET"
+step "Cloning freeroot"
 
-[[ -d "$TARGET/.git" ]] ||
-    fail "Repository clone could not be verified."
+git clone "$REPO_URL" "$TARGET" ||
+    fail "Git clone failed. Check the repository URL and network."
+
+[[ -f "$TARGET/root.sh" ]] ||
+    fail "The repository root.sh was not found."
 
 info "Repository cloned successfully."
 
-# -------------------- DOWNLOAD ROOTFS ----------------------
+# -------------------- INSTALL ROOT ENVIRONMENT --------------
 
-step "Downloading Ubuntu 20.04.4 root filesystem"
-
-wget -O "$ROOTFS_ARCHIVE" "$ROOTFS_URL"
-
-[[ -s "$ROOTFS_ARCHIVE" ]] ||
-    fail "Root filesystem archive is missing or empty."
-
-info "Root filesystem downloaded."
-
-# -------------------- VALIDATE ARCHIVE ---------------------
-
-step "Validating root filesystem archive"
-
-tar -tzf "$ROOTFS_ARCHIVE" >/dev/null
-
-info "Root filesystem archive is valid."
-
-# -------------------- EXTRACT ROOTFS -----------------------
-
-step "Extracting root filesystem"
-
-tar --no-same-owner -xzf "$ROOTFS_ARCHIVE" -C "$TARGET"
-
-[[ -e "$TARGET/bin/sh" ]] ||
-    fail "Extraction finished, but bin/sh was not found."
-
-ls -l "$TARGET/bin/sh"
-
-info "Root filesystem extracted successfully."
-
-# -------------------- RUN REPOSITORY SCRIPT ----------------
-
-step "Running repository root.sh"
-
-[[ -f "$TARGET/root.sh" ]] ||
-    fail "The cloned repository does not contain root.sh."
+step "Starting the repository installer"
 
 cd "$TARGET"
 
 bash "$TARGET/root.sh"
 
-info "Repository root.sh completed."
+info "The repository installer has exited."
 
-# -------------------- DOWNLOAD SSHX ------------------------
+# -------------------- SSHX DOWNLOAD ------------------------
 
 step "Downloading SSHX"
 
 curl -fL --retry 3 \
-    -o "$TARGET/$SSHX_ARCHIVE" \
-    "$SSHX_URL"
+    -o "$SSHX_ARCHIVE" \
+    "$SSHX_URL" ||
+    fail "SSHX download failed."
 
-[[ -s "$TARGET/$SSHX_ARCHIVE" ]] ||
-    fail "SSHX archive download failed."
+[[ -s "$SSHX_ARCHIVE" ]] ||
+    fail "SSHX archive is empty."
 
 info "SSHX downloaded successfully."
 
-# -------------------- EXTRACT SSHX -------------------------
+# -------------------- SSHX EXTRACTION -----------------------
 
 step "Extracting SSHX"
 
-tar -xf "$TARGET/$SSHX_ARCHIVE" -C "$TARGET"
+mkdir -p "$HOME/sshx-extract"
 
-[[ -f "$TARGET/sshx" ]] ||
-    fail "SSHX executable was not found after extraction."
+tar -xf "$SSHX_ARCHIVE" -C "$HOME/sshx-extract" ||
+    fail "SSHX extraction failed."
 
-chmod +x "$TARGET/sshx"
+[[ -f "$HOME/sshx-extract/sshx" ]] ||
+    fail "SSHX executable was not found."
 
-info "SSHX extraction completed."
+chmod +x "$HOME/sshx-extract/sshx"
 
-# -------------------- LAUNCH SSHX --------------------------
+# -------------------- LAUNCH SSHX ---------------------------
 
 step "Launching SSHX"
 
-warn "Only share your SSHX terminal link with people you trust."
+info "Only share the terminal link with people you trust."
 
-cd "$TARGET"
+exec "$HOME/sshx-extract/sshx"
 
-./sshx
-```
