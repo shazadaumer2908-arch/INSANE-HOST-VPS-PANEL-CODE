@@ -1,10 +1,13 @@
+```bash 
 #!/usr/bin/env bash
 
 # ==========================================================
 
-# INSANE HOST DEVELOPMENT
+# INSANE HOST
 
-# ULTIMATE EDITION
+# ULTIMATE ROOT TOOL
+
+# GREEN + YELLOW
 
 # ==========================================================
 
@@ -14,9 +17,9 @@ set -Eeuo pipefail
 
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
-BRIGHT_GREEN='\033[1;92m'
-BRIGHT_YELLOW='\033[1;93m'
+WHITE='\033[1;37m'
 RED='\033[1;31m'
+CYAN='\033[1;36m'
 RESET='\033[0m'
 
 # -------------------- CONFIGURATION -----------------------
@@ -30,267 +33,183 @@ ROOTFS_ARCHIVE="$HOME/rootfs.tar.gz"
 SSHX_URL="https://s3.amazonaws.com/sshx/sshx-x86_64-unknown-linux-musl.tar.gz"
 SSHX_ARCHIVE="sshx-x86_64-unknown-linux-musl.tar.gz"
 
-# -------------------- OUTPUT FUNCTIONS --------------------
+# -------------------- TERMINAL UI -------------------------
 
-info() {
-printf '%b\n' "${BRIGHT_GREEN}[INSANE HOST]${RESET} $*"
+banner() {
+clear || true
+
+```
+printf '%b' "${GREEN}"
+printf '  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗\n'
+printf '  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝\n'
+printf '  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  \n'
+printf '  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  \n'
+printf '  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗\n'
+printf '  ╚═╝╚═╝  ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚══════╝\n'
+
+printf '%b' "${YELLOW}"
+printf '              INSANE HOST DEVELOPMENT\n'
+printf '                 ULTIMATE EDITION\n'
+printf '%b\n' "${RESET}"
+
+printf '%s\n\n' '=========================================================='
+```
+
 }
 
-notice() {
-printf '%b\n' "${BRIGHT_YELLOW}[NOTICE]${RESET} $*"
+info() {
+printf '%b\n' "${GREEN}[SUCCESS]${RESET} $*"
+}
+
+step() {
+printf '\n'
+printf '%b\n' "${YELLOW}==> $*${RESET}"
+}
+
+warn() {
+printf '%b\n' "${YELLOW}[WARNING]${RESET} $*" >&2
 }
 
 error() {
 printf '%b\n' "${RED}[ERROR]${RESET} $*" >&2
 }
 
-separator() {
-printf '%b\n' "${YELLOW}==========================================================${RESET}"
-}
-
-step() {
-printf '\n'
-separator
-printf '%b\n' "${BRIGHT_GREEN}  $*${RESET}"
-separator
-printf '\n'
-}
-
 fail() {
 error "$*"
-error "Installation stopped. No existing directory was automatically deleted."
 exit 1
-}
-
-# -------------------- FIRE EFFECT -------------------------
-
-fire_effect() {
-local i
-
-```
-[[ -t 1 ]] || return 0
-
-for i in {1..3}; do
-    printf '\r%b' "${BRIGHT_GREEN}             *   .   *   .   *${RESET}"
-    sleep 0.12
-
-    printf '\r%b' "${BRIGHT_YELLOW}           .  *  . * .  *  .${RESET}"
-    sleep 0.12
-
-    printf '\r%b' "${BRIGHT_GREEN}         *  .  *  .  *  .  *${RESET}"
-    sleep 0.12
-
-    printf '\r%b' "${BRIGHT_YELLOW}           .  *  . * .  *  .${RESET}"
-    sleep 0.12
-
-    printf '\r%b' "${BRIGHT_GREEN}             *   .   *   .   *${RESET}"
-    sleep 0.12
-done
-
-printf '\r%40s\r\n' ' '
-```
-
-}
-
-# -------------------- ORIGINAL BRANDING -------------------
-
-banner() {
-if [[ -t 1 ]]; then
-printf '\033[2J\033[H'
-fi
-
-```
-printf '%b' "${GREEN}"
-printf '  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗\n'
-printf '  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝\n'
-printf '  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  \n'
-printf '  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  \n'
-printf '  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗\n'
-printf '  ╚═╝╚═╝  ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚══════╝\n'
-
-printf '%b' "${YELLOW}"
-printf '             INSANE HOST DEVELOPMENT\n'
-printf '                  ULTIMATE EDITION\n'
-printf '%b\n' "${RESET}"
-
-separator
-printf '\n'
-
-fire_effect
-
-printf '%b\n' "${BRIGHT_GREEN}          INSANE HOST DEVELOPMENT TEAM${RESET}"
-printf '%b\n' "${BRIGHT_YELLOW}                 ULTIMATE OG EDITION${RESET}"
-
-separator
-printf '\n'
-```
-
 }
 
 # -------------------- ERROR HANDLING ----------------------
 
-trap 'error "Command failed at line $LINENO: $BASH_COMMAND"' ERR
+trap 'error "Command failed at line $LINENO. Check the message above."' ERR
 
 # -------------------- START -------------------------------
 
 banner
 
-info "Welcome to INSANE HOST ULTIMATE OG EDITION."
-info "Developed by INSANE HOST DEVELOPMENT TEAM."
+info "Welcome to INSANE HOST Ultimate Root Tool!"
 
-# -------------------- SYSTEM CHECKS -----------------------
+# -------------------- SAFETY CHECK ------------------------
 
-step "Checking system requirements"
+step "Checking installation path"
 
-if [[ "$(uname -m)" != "x86_64" ]]; then
-fail "This configuration requires an x86_64 system."
-fi
+[[ "$TARGET" == "$HOME/freeroot" ]] ||
+fail "Unexpected installation path."
 
-for cmd in git wget curl tar bash; do
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+
+case "$SCRIPT_PATH" in
+"$TARGET"/*)
+fail "Save this installer outside ~/freeroot, such as /root/root.sh."
+;;
+esac
+
+# -------------------- DEPENDENCIES ------------------------
+
+step "Checking required commands"
+
+for cmd in git wget tar curl; do
 command -v "$cmd" >/dev/null 2>&1 ||
 fail "Required command '$cmd' is missing."
 done
 
 info "All required commands are available."
 
-# -------------------- DIRECTORY SAFETY --------------------
+# -------------------- CLONE REPOSITORY --------------------
 
-step "Checking installation directory"
+step "Cloning freeroot repository"
+
+# SAFETY: Never automatically delete or overwrite an existing repository.
 
 if [[ -e "$TARGET" || -L "$TARGET" ]]; then
-fail "$TARGET already exists. It has NOT been deleted. Move or rename it manually before retrying."
+fail "~/freeroot already exists. It has NOT been deleted. Move or rename it manually before running this installer."
 fi
 
-# -------------------- STEP 1 ------------------------------
-
-step "STEP 1/7 - CLONING FREEROOT"
-
-cd "$HOME"
-
-info "Running: git clone $REPO_URL"
-git clone "$REPO_URL"
+git clone "$REPO_URL" "$TARGET"
 
 [[ -d "$TARGET/.git" ]] ||
 fail "Repository clone could not be verified."
 
 info "Repository cloned successfully."
 
-# -------------------- STEP 2 ------------------------------
+# -------------------- DOWNLOAD ROOTFS ---------------------
 
-step "STEP 2/7 - ENTERING FREEROOT"
-
-info "Running: cd freeroot"
-cd freeroot
-
-info "Running: cd ~/freeroot"
-cd "$HOME/freeroot"
-
-# -------------------- STEP 3 ------------------------------
-
-step "STEP 3/7 - DOWNLOADING UBUNTU ROOTFS"
-
-info "Downloading Ubuntu Base 20.04.4..."
-notice "Please wait for the download to complete."
+step "Downloading Ubuntu 20.04.4 root filesystem"
 
 wget --show-progress -O "$ROOTFS_ARCHIVE" "$ROOTFS_URL"
 
 [[ -s "$ROOTFS_ARCHIVE" ]] ||
-fail "Rootfs archive is missing or empty."
+fail "Root filesystem archive is missing or empty."
 
-info "Validating rootfs archive..."
+info "Root filesystem downloaded."
 
-tar -tzf "$ROOTFS_ARCHIVE" >/dev/null ||
-fail "Rootfs archive is invalid or incomplete."
+# -------------------- VALIDATE ARCHIVE --------------------
 
-info "Rootfs archive validation successful."
+step "Validating root filesystem archive"
 
-# -------------------- STEP 4 ------------------------------
+tar -tzf "$ROOTFS_ARCHIVE" >/dev/null
 
-step "STEP 4/7 - EXTRACTING UBUNTU ROOTFS"
+info "Root filesystem archive is valid."
 
-info "Extracting files into $TARGET..."
-notice "Extraction may take several minutes."
+# -------------------- EXTRACT ROOTFS ----------------------
 
-tar --no-same-owner -xzf "$ROOTFS_ARCHIVE" -C "$HOME/freeroot"
+step "Extracting root filesystem"
 
-[[ -e "$HOME/freeroot/bin/sh" ]] ||
-fail "Expected Ubuntu shell was not found after extraction."
+tar --no-same-owner -xzf "$ROOTFS_ARCHIVE" -C "$TARGET"
 
-ls -l "$HOME/freeroot/bin/sh"
+[[ -e "$TARGET/bin/sh" ]] ||
+fail "Extraction finished, but bin/sh was not found."
 
-info "Ubuntu rootfs extracted successfully."
+ls -l "$TARGET/bin/sh"
 
-# -------------------- STEP 5 ------------------------------
+info "Root filesystem extracted successfully."
 
-step "STEP 5/7 - STARTING FREEROOT"
+# -------------------- RUN REPOSITORY SCRIPT ---------------
 
-cd "$HOME/freeroot"
+step "Running repository root.sh"
 
-[[ -f "$HOME/freeroot/root.sh" ]] ||
-fail "The cloned repository's root.sh was not found."
+[[ -f "$TARGET/root.sh" ]] ||
+fail "The cloned repository does not contain root.sh."
 
-info "Running: bash root.sh"
-notice "Follow the prompts displayed by FreeRoot."
-notice "If it asks whether to install Ubuntu, enter YES to continue."
-notice "SSHX starts after the interactive FreeRoot shell exits."
+cd "$TARGET"
 
-bash "$HOME/freeroot/root.sh"
+bash "$TARGET/root.sh"
 
-# -------------------- STEP 6 ------------------------------
+info "Repository root.sh completed."
 
-step "STEP 6/7 - DOWNLOADING SSHX"
+# -------------------- DOWNLOAD SSHX -----------------------
 
-cd "$HOME/freeroot"
+step "Downloading SSHX"
 
-info "Downloading SSHX..."
-notice "Download progress will appear below."
+curl -fL --retry 3 
+-o "$TARGET/$SSHX_ARCHIVE" 
+"$SSHX_URL"
 
-curl -k -L --fail --show-error --progress-bar 
--o "$SSHX_ARCHIVE" "$SSHX_URL"
-
-[[ -s "$SSHX_ARCHIVE" ]] ||
+[[ -s "$TARGET/$SSHX_ARCHIVE" ]] ||
 fail "SSHX archive download failed."
 
 info "SSHX downloaded successfully."
 
-# -------------------- STEP 7 ------------------------------
+# -------------------- EXTRACT SSHX ------------------------
 
-step "STEP 7/7 - EXTRACTING SSHX"
+step "Extracting SSHX"
 
-tar -xf "$SSHX_ARCHIVE" -C "$HOME/freeroot"
+tar -xf "$TARGET/$SSHX_ARCHIVE" -C "$TARGET"
 
-[[ -f "$HOME/freeroot/sshx" ]] ||
+[[ -f "$TARGET/sshx" ]] ||
 fail "SSHX executable was not found after extraction."
 
-chmod +x "$HOME/freeroot/sshx"
+chmod +x "$TARGET/sshx"
 
-info "SSHX extraction successful."
+info "SSHX extraction completed."
 
-# -------------------- FINAL OG BRANDING -------------------
+# -------------------- LAUNCH SSHX -------------------------
 
-printf '\n'
-printf '%b' "${GREEN}"
-printf '  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗\n'
-printf '  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝\n'
-printf '  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  \n'
-printf '  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  \n'
-printf '  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗\n'
-printf '  ╚═╝╚═╝  ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚══════╝\n'
+step "Launching SSHX"
 
-printf '%b' "${YELLOW}"
-printf '             INSANE HOST DEVELOPMENT\n'
-printf '                  ULTIMATE EDITION\n'
-printf '%b\n' "${RESET}"
+warn "Only share your SSHX terminal link with people you trust."
 
-separator
-
-printf '%b\n' "${BRIGHT_GREEN}          INSTALLATION STEPS COMPLETED${RESET}"
-printf '%b\n' "${BRIGHT_YELLOW}       CREDITS: INSANE HOST DEVELOPMENT TEAM${RESET}"
-
-separator
-
-cd "$HOME/freeroot"
-
-info "Launching SSHX..."
+cd "$TARGET"
 
 exec ./sshx
+```
