@@ -1,3 +1,4 @@
+```bash
 #!/usr/bin/env bash
 
 # ==========================================================
@@ -20,14 +21,18 @@ RESET='\033[0m'
 
 REPO_URL="https://github.com/foxytouxxx/freeroot.git"
 TARGET="$HOME/freeroot"
+
 ROOTFS_URL="https://cdimages.ubuntu.com/ubuntu-base/releases/20.04.4/release/ubuntu-base-20.04.4-base-amd64.tar.gz"
 ROOTFS_ARCHIVE="$HOME/rootfs.tar.gz"
+
 SSHX_URL="https://s3.amazonaws.com/sshx/sshx-x86_64-unknown-linux-musl.tar.gz"
+SSHX_ARCHIVE="sshx-x86_64-unknown-linux-musl.tar.gz"
 
 # -------------------- UI -----------------------------------
 
 banner() {
     clear
+
     echo -e "${GREEN}"
     echo '  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗'
     echo '  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝'
@@ -35,10 +40,12 @@ banner() {
     echo '  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  '
     echo '  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗'
     echo '  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝'
+
     echo -e "${YELLOW}"
     echo '              INSANE HOST DEVELOPMENT'
-    echo '                 ROOT INSTALLER'
+    echo '                   ROOT INSTALLER'
     echo -e "${RESET}"
+
     echo '=========================================================='
     echo
 }
@@ -71,8 +78,7 @@ banner
 
 info "Starting root installer..."
 
-# Make sure the installer isn't inside the directory
-# that will be deleted.
+# -------------------- SAFETY CHECK -------------------------
 
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 
@@ -98,9 +104,29 @@ info "All required commands are available."
 step "Checking existing repository"
 
 if [[ -e "$TARGET" || -L "$TARGET" ]]; then
-    info "Existing ~/freeroot found. Removing old directory..."
-    rm -rf -- "$TARGET"
-    info "Old directory removed."
+    info "Existing ~/freeroot found. Removing the entire directory..."
+
+    if [[ "$TARGET" == "$HOME/freeroot" ]]; then
+
+        chmod -R u+rwX -- "$TARGET" 2>/dev/null || true
+
+        if ! rm -rf -- "$TARGET"; then
+            if command -v sudo >/dev/null 2>&1; then
+                sudo rm -rf -- "$TARGET"
+            else
+                fail "Cannot remove ~/freeroot. Check directory permissions."
+            fi
+        fi
+
+    else
+        fail "Safety check failed: unexpected target directory."
+    fi
+
+    [[ ! -e "$TARGET" && ! -L "$TARGET" ]] ||
+        fail "The old repository directory still exists."
+
+    info "Old repository and its contents removed successfully."
+
 else
     info "No existing ~/freeroot directory found."
 fi
@@ -121,13 +147,15 @@ wget -O "$ROOTFS_ARCHIVE" "$ROOTFS_URL"
 
 info "Root filesystem downloaded."
 
-# -------------------- EXTRACT ROOTFS -----------------------
+# -------------------- VALIDATE ROOTFS ----------------------
 
 step "Validating root filesystem archive"
 
 tar -tzf "$ROOTFS_ARCHIVE" >/dev/null
 
 info "Archive validation successful."
+
+# -------------------- EXTRACT ROOTFS -----------------------
 
 step "Extracting root filesystem"
 
@@ -158,28 +186,32 @@ step "Downloading SSHX"
 
 cd "$TARGET"
 
-curl -fL --retry 3 -o sshx-x86_64-unknown-linux-musl.tar.gz "$SSHX_URL"
+curl -fL --retry 3 \
+    -o "$SSHX_ARCHIVE" \
+    "$SSHX_URL"
 
 info "SSHX archive downloaded."
 
-# -------------------- EXTRACT SSHX --------------------------
+# -------------------- EXTRACT SSHX -------------------------
 
 step "Extracting SSHX"
 
-tar -xf sshx-x86_64-unknown-linux-musl.tar.gz
+tar -xf "$SSHX_ARCHIVE"
 
 [[ -f "$TARGET/sshx" ]] ||
     fail "The extracted sshx executable was not found."
 
 chmod +x "$TARGET/sshx"
 
-# -------------------- LAUNCH SSHX ---------------------------
+info "SSHX is ready."
+
+# -------------------- LAUNCH SSHX --------------------------
 
 step "Launching SSHX"
 
-info "SSHX may create a link that grants access to your terminal."
-info "Only share that link with people you trust."
+info "Only share your SSHX terminal link with people you trust."
 
 cd "$TARGET"
 
 ./sshx
+```
