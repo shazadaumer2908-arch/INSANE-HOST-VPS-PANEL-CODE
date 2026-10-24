@@ -102,55 +102,20 @@ esac
 
 step "Checking required commands"
 
-for cmd in git wget tar curl find rm; do
+for cmd in git wget tar curl; do
     command -v "$cmd" >/dev/null 2>&1 ||
         fail "Required command '$cmd' is missing."
 done
 
 info "All required commands are available."
 
-# -------------------- REMOVE OLD REPOSITORY ----------------
-
-step "Removing old freeroot repository"
-
-if [[ -e "$TARGET" || -L "$TARGET" ]]; then
-
-    warn "An existing ~/freeroot directory was found."
-
-    if [[ -L "$TARGET" ]]; then
-        rm -f -- "$TARGET" ||
-            fail "Unable to remove the existing symbolic link."
-    else
-        # First attempt: remove the complete directory.
-        if ! rm -rf -- "$TARGET"; then
-            warn "Normal removal failed. Trying elevated permissions."
-
-            if [[ "$EUID" -eq 0 ]]; then
-                rm -rf -- "$TARGET" ||
-                    fail "Unable to remove the old directory."
-            elif command -v sudo >/dev/null 2>&1; then
-                sudo rm -rf -- "$TARGET" ||
-                    fail "Unable to remove the old directory."
-            else
-                fail "Cannot remove the old directory. Run as its owner or root."
-            fi
-        fi
-    fi
-
-    # Verify deletion rather than assuming it worked.
-    if [[ -e "$TARGET" || -L "$TARGET" ]]; then
-        fail "The old directory still exists. Cannot safely clone."
-    fi
-
-    info "Old repository removed successfully."
-
-else
-    info "No old repository found."
-fi
-
 # -------------------- CLONE REPOSITORY ---------------------
 
 step "Cloning freeroot repository"
+
+if [[ -e "$TARGET" || -L "$TARGET" ]]; then
+    fail "~/freeroot already exists. Move it or choose another target before running this installer."
+fi
 
 git clone "$REPO_URL" "$TARGET"
 
