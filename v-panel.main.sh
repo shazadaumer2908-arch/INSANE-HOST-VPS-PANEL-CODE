@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 
 # ==========================================================
@@ -166,7 +167,6 @@ if [[ ! -f /etc/os-release ]]; then
     exit 1
 fi
 
-# shellcheck disable=SC1091
 source /etc/os-release
 
 case "${ID:-}" in
@@ -187,12 +187,12 @@ printf "${PURPLE}${BOLD}       V-PANEL ADMIN PASSWORD${RESET}\n"
 line
 
 printf "${CYAN}Enter your preferred V-Panel admin password.${RESET}\n"
-printf "${GRAY}Your password will be hidden while typing.${RESET}\n\n"
+printf "${GRAY}Your password will be visible while typing.${RESET}\n\n"
 
 while true; do
     PANEL_PASSWORD=""
 
-    if ! IFS= read -r -s -p "  Enter password: " PANEL_PASSWORD; then
+    if ! IFS= read -r -p "  Enter password: " PANEL_PASSWORD; then
         printf "\n"
         error "Unable to read password."
         exit 1
@@ -207,7 +207,7 @@ while true; do
 
     PANEL_CONFIRM=""
 
-    if ! IFS= read -r -s -p "  Confirm password: " PANEL_CONFIRM; then
+    if ! IFS= read -r -p "  Confirm password: " PANEL_CONFIRM; then
         printf "\n"
         error "Unable to confirm password."
         exit 1
@@ -316,7 +316,6 @@ cd "$PANEL_DIR"
 
 info "Starting V-Panel installer..."
 
-# Assumes the upstream installer supports --admin-pass.
 bash install.sh --admin-pass "$PANEL_PASSWORD"
 
 unset PANEL_PASSWORD
