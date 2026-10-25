@@ -1,8 +1,60 @@
 #!/bin/sh
 set -eu
 
+# ==========================================================
+#                    INSANE HOST
+#               UBUNTU PROOT INSTALLER
+# ==========================================================
+
 ROOTFS_DIR="$HOME/ubuntu-rootfs"
 ARCH="$(uname -m)"
+
+# -------------------- COLORS ------------------------------
+
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+RED='\033[1;31m'
+CYAN='\033[1;36m'
+WHITE='\033[1;37m'
+RESET='\033[0m'
+CLEAR='\033[2J\033[H'
+
+# -------------------- MAIN LOGO ---------------------------
+
+show_logo() {
+    printf '\033[2J\033[H'
+
+    printf "\n"
+    printf "${YELLOW}       *       .       *       .       *${RESET}\n"
+    printf "${GREEN}          FIRE UP YOUR TERMINAL${RESET}\n"
+    printf "${YELLOW}       *       .       *       .       *${RESET}\n"
+    printf "\n"
+
+    printf "${GREEN}  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗${RESET}\n"
+    printf "${GREEN}  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝${RESET}\n"
+    printf "${YELLOW}  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  ${RESET}\n"
+    printf "${YELLOW}  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  ${RESET}\n"
+    printf "${GREEN}  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗${RESET}\n"
+    printf "${GREEN}  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝${RESET}\n"
+    printf "\n"
+
+    printf "${YELLOW}  ██╗  ██╗ ██████╗ ███████╗████████╗${RESET}\n"
+    printf "${YELLOW}  ██║  ██║██╔═══██╗██╔════╝╚══██╔══╝${RESET}\n"
+    printf "${GREEN}  ███████║██║   ██║███████╗   ██║   ${RESET}\n"
+    printf "${GREEN}  ██╔══██║██║   ██║╚════██║   ██║   ${RESET}\n"
+    printf "${YELLOW}  ██║  ██║╚██████╔╝███████║   ██║   ${RESET}\n"
+    printf "${YELLOW}  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝   ${RESET}\n"
+
+    printf "\n"
+    printf "${GREEN}          DEVELOPMENT TEAM${RESET}\n"
+    printf "${YELLOW}       UBUNTU 22.04 PROOT SYSTEM${RESET}\n"
+    printf "\n"
+    printf "${CYAN}  =============================================${RESET}\n"
+    printf "${GREEN}          POWERED BY INSANE HOST${RESET}\n"
+    printf "${CYAN}  =============================================${RESET}\n"
+    printf "\n"
+}
+
 
 case "$ARCH" in
   x86_64)
