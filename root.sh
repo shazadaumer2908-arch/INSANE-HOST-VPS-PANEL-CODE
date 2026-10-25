@@ -1,3 +1,4 @@
+```
 #!/bin/sh
 
 # ==========================================================
@@ -9,15 +10,15 @@
 set -eu
 umask 077
 
-# -------------------- BRAND COLORS -------------------------
+# -------------------- COLORS -------------------------------
 
-GREEN='\033[1;32m'
-YELLOW='\033[1;33m'
-WHITE='\033[1;37m'
-RED='\033[1;31m'
-RESET='\033[0m'
-
-if [ ! -t 1 ]; then
+if [ -t 1 ]; then
+    GREEN='\033[1;32m'
+    YELLOW='\033[1;33m'
+    WHITE='\033[1;37m'
+    RED='\033[1;31m'
+    RESET='\033[0m'
+else
     GREEN=''
     YELLOW=''
     WHITE=''
@@ -27,34 +28,13 @@ fi
 
 # -------------------- CONFIGURATION ------------------------
 
-UBUNTU_VERSION="24.04.5"
-UBUNTU_CODENAME="noble"
+UBUNTU_VERSION='24.04.5'
+ROOTFS_DIR="${HOME:?HOME is not set}/ubuntu-24.04-rootfs"
 
-ROOTFS_DIR="$HOME/ubuntu-24.04-rootfs"
-TMP_DIR="$HOME/.insane-host-install-$$"
-
-UBUNTU_BASE_URL="https://cdimages.ubuntu.com/ubuntu-base/releases/noble/release"
-
-PROOT_BASE_URL="https://raw.githubusercontent.com/dxomg/vpsfreepterovm/main"
+UBUNTU_BASE_URL='https://cdimages.ubuntu.com/ubuntu-base/releases/24.04/release'
+PROOT_BASE_URL='https://raw.githubusercontent.com/dxomg/vpsfreepterovm/main'
 
 # -------------------- FUNCTIONS ----------------------------
-
-banner() {
-    printf '\n'
-    printf "${GREEN}  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗${RESET}\n"
-    printf "${GREEN}  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝${RESET}\n"
-    printf "${GREEN}  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  ${RESET}\n"
-    printf "${YELLOW}  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  ${RESET}\n"
-    printf "${YELLOW}  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗${RESET}\n"
-    printf "${YELLOW}  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝${RESET}\n'
-    printf '\n'
-    printf "${YELLOW}             INSANE HOST DEVELOPMENT${RESET}\n"
-    printf "${GREEN}                ULTIMATE EDITION${RESET}\n"
-    printf "${WHITE}             Ubuntu ${UBUNTU_VERSION} LTS${RESET}\n"
-    printf '\n'
-    printf "${GREEN}====================================================${RESET}\n"
-    printf '\n'
-}
 
 info() {
     printf "${GREEN}[INFO]${RESET} %s\n" "$1"
@@ -72,140 +52,174 @@ error() {
     printf "${RED}[ERROR]${RESET} %s\n" "$1" >&2
 }
 
-cleanup() {
-    rm -rf "$TMP_DIR"
-}
-
 fail() {
     error "$1"
     exit 1
 }
 
-# -------------------- START --------------------------------
+banner() {
+    printf '\n'
+    printf "${GREEN}  ██╗███╗   ██╗███████╗ █████╗ ███╗   ██╗███████╗${RESET}\n"
+    printf "${GREEN}  ██║████╗  ██║██╔════╝██╔══██╗████╗  ██║██╔════╝${RESET}\n"
+    printf "${GREEN}  ██║██╔██╗ ██║███████╗███████║██╔██╗ ██║█████╗  ${RESET}\n"
+    printf "${YELLOW}  ██║██║╚██╗██║╚════██║██╔══██║██║╚██╗██║██╔══╝  ${RESET}\n"
+    printf "${YELLOW}  ██║██║ ╚████║███████║██║  ██║██║ ╚████║███████╗${RESET}\n"
+    printf "${YELLOW}  ╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝${RESET}\n"
+    printf '\n'
+    printf "${YELLOW}          INSANE HOST DEVELOPMENT${RESET}\n"
+    printf "${GREEN}             ULTIMATE EDITION${RESET}\n"
+    printf "${WHITE}          Ubuntu ${UBUNTU_VERSION} LTS${RESET}\n"
+    printf '\n'
+    printf "${GREEN}====================================================${RESET}\n"
+    printf '\n'
+}
+
+cleanup() {
+    if [ -n "${TMP_DIR:-}" ] && [ -d "$TMP_DIR" ]; then
+        rm -rf -- "$TMP_DIR"
+    fi
+}
 
 banner
 
-info "Detecting system architecture..."
+# -------------------- ARCHITECTURE ------------------------
+
+info 'Detecting CPU architecture...'
 
 ARCH="$(uname -m)"
 
 case "$ARCH" in
     x86_64)
-        UBUNTU_ARCH="amd64"
-        PROOT_ARCH="x86_64"
+        UBUNTU_ARCH='amd64'
+        PROOT_ARCH='x86_64'
         ;;
     aarch64|arm64)
-        UBUNTU_ARCH="arm64"
-        PROOT_ARCH="aarch64"
+        UBUNTU_ARCH='arm64'
+        PROOT_ARCH='aarch64'
         ;;
     *)
         fail "Unsupported architecture: $ARCH"
         ;;
 esac
 
-success "Architecture detected: $ARCH"
+success "Architecture: $ARCH"
 
-# -------------------- DEPENDENCIES -------------------------
+# -------------------- DEPENDENCIES ------------------------
 
-for CMD in wget tar sha256sum; do
-    if ! command -v "$CMD" >/dev/null 2>&1; then
-        fail "Required command '$CMD' is missing. Install it first."
-    fi
+for CMD in wget tar sha256sum awk mktemp; do
+    command -v "$CMD" >/dev/null 2>&1 ||
+        fail "Required command '$CMD' is missing."
 done
 
-# -------------------- EXISTING INSTALLATION ----------------
+# -------------------- EXISTING INSTALLATION ---------------
 
 if [ -f "$ROOTFS_DIR/.installed" ] &&
    [ -x "$ROOTFS_DIR/usr/local/bin/proot" ] &&
    [ -x "$ROOTFS_DIR/bin/bash" ]; then
 
-    success "Ubuntu 24.04 is already installed."
+    success 'Ubuntu 24.04 is already installed.'
+
 else
-    # Never overwrite an existing Ubuntu 22.04 rootfs.
-    # A separate directory is used for Ubuntu 24.04.
+
+    # Preserve incomplete installations instead of deleting data.
 
     if [ -e "$ROOTFS_DIR" ]; then
-        warning "An incomplete Ubuntu 24.04 installation was found."
-        warning "Preserving the existing directory."
-        fail "Back up or rename $ROOTFS_DIR, then run this script again."
+        warning "Incomplete installation found: $ROOTFS_DIR"
+        fail 'Back up or rename this directory before retrying.'
     fi
 
-    mkdir -p "$TMP_DIR/rootfs"
+    TMP_DIR="$(mktemp -d "$HOME/.insane-host-install.XXXXXX")" ||
+        fail 'Could not create temporary directory.'
 
     trap cleanup EXIT
+    trap 'exit 129' HUP
     trap 'exit 130' INT
     trap 'exit 143' TERM
 
     ARCHIVE_NAME="ubuntu-base-${UBUNTU_VERSION}-base-${UBUNTU_ARCH}.tar.gz"
 
-    info "Downloading Ubuntu ${UBUNTU_VERSION} root filesystem..."
+    # ---------------- DOWNLOAD UBUNTU ---------------------
 
-    if ! wget -O "$TMP_DIR/$ARCHIVE_NAME" \
-        "$UBUNTU_BASE_URL/$ARCHIVE_NAME"; then
-        fail "Ubuntu download failed. Check your internet connection."
-    fi
+    info "Downloading Ubuntu ${UBUNTU_VERSION}..."
 
-    # ---------------- SHA256 VERIFICATION ------------------
+    wget -O "$TMP_DIR/$ARCHIVE_NAME" \
+        "$UBUNTU_BASE_URL/$ARCHIVE_NAME" ||
+        fail 'Ubuntu download failed.'
 
-    info "Downloading official Ubuntu checksums..."
+    # ---------------- DOWNLOAD CHECKSUMS ------------------
 
-    if ! wget -O "$TMP_DIR/SHA256SUMS" \
-        "$UBUNTU_BASE_URL/SHA256SUMS"; then
-        fail "Could not download Ubuntu checksum file."
-    fi
+    info 'Downloading official Ubuntu checksums...'
 
-    if ! grep -E "^[[:xdigit:]]{64}[[:space:]]+\\*?${ARCHIVE_NAME}\$" \
-        "$TMP_DIR/SHA256SUMS" > "$TMP_DIR/checksum.txt"; then
-        fail "The archive checksum was not found."
-    fi
+    wget -O "$TMP_DIR/SHA256SUMS" \
+        "$UBUNTU_BASE_URL/SHA256SUMS" ||
+        fail 'Could not download Ubuntu checksums.'
 
-    info "Verifying Ubuntu archive integrity..."
+    # Ubuntu SHA256SUMS uses: HASH *filename
+    # Handle both starred and unstarred filenames.
+
+    awk -v name="$ARCHIVE_NAME" \
+        '$2 == name || $2 == "*" name {
+            print
+            found=1
+        }
+        END {
+            if (!found) exit 1
+        }' "$TMP_DIR/SHA256SUMS" > "$TMP_DIR/checksum.txt" ||
+        fail 'Ubuntu archive checksum entry not found.'
+
+    # ---------------- VERIFY ARCHIVE ----------------------
+
+    info 'Verifying Ubuntu archive integrity...'
 
     (
         cd "$TMP_DIR"
         sha256sum -c checksum.txt
-    ) || fail "Ubuntu archive checksum verification failed."
+    ) || fail 'Checksum verification failed.'
 
-    success "Ubuntu archive checksum verified."
+    success 'Ubuntu archive checksum verified.'
 
-    # ---------------- EXTRACT ROOTFS -----------------------
+    # ---------------- EXTRACT ROOTFS ----------------------
 
-    info "Extracting Ubuntu root filesystem..."
+    mkdir "$TMP_DIR/rootfs"
 
-    if ! tar -xzf "$TMP_DIR/$ARCHIVE_NAME" \
-        -C "$TMP_DIR/rootfs"; then
-        fail "Ubuntu root filesystem extraction failed."
-    fi
+    info 'Extracting Ubuntu root filesystem...'
 
-    if [ ! -x "$TMP_DIR/rootfs/bin/bash" ]; then
-        fail "Ubuntu archive does not contain the expected Bash executable."
-    fi
+    tar -xzf "$TMP_DIR/$ARCHIVE_NAME" \
+        -C "$TMP_DIR/rootfs" ||
+        fail 'Root filesystem extraction failed.'
 
-    # ---------------- INSTALL PROOT ------------------------
+    [ -x "$TMP_DIR/rootfs/bin/bash" ] ||
+        fail 'Ubuntu root filesystem is missing /bin/bash.'
+
+    [ -d "$TMP_DIR/rootfs/etc" ] ||
+        fail 'Ubuntu root filesystem is missing /etc.'
+
+    # ---------------- DOWNLOAD PROOT -----------------------
 
     mkdir -p "$TMP_DIR/rootfs/usr/local/bin"
 
-    PROOT_URL="$PROOT_BASE_URL/proot-$PROOT_ARCH"
+    info "Downloading PRoot for ${PROOT_ARCH}..."
 
-    info "Downloading PRoot for $PROOT_ARCH..."
+    wget -O "$TMP_DIR/rootfs/usr/local/bin/proot" \
+        "$PROOT_BASE_URL/proot-$PROOT_ARCH" ||
+        fail 'PRoot download failed.'
 
-    if ! wget -O "$TMP_DIR/rootfs/usr/local/bin/proot" \
-        "$PROOT_URL"; then
-        fail "PRoot download failed. Check the configured source."
-    fi
-
-    if [ ! -s "$TMP_DIR/rootfs/usr/local/bin/proot" ]; then
-        fail "Downloaded PRoot file is empty."
-    fi
+    [ -s "$TMP_DIR/rootfs/usr/local/bin/proot" ] ||
+        fail 'Downloaded PRoot file is empty.'
 
     chmod 755 "$TMP_DIR/rootfs/usr/local/bin/proot"
 
+    # Verify that the downloaded file can run as PRoot.
+
+    "$TMP_DIR/rootfs/usr/local/bin/proot" --version \
+        >/dev/null 2>&1 ||
+        fail 'PRoot binary failed its version check.'
+
+    success 'PRoot version check passed.'
+
     # ---------------- DNS CONFIGURATION --------------------
 
-    info "Configuring DNS..."
-
-    # Replace any existing resolv.conf symlink inside
-    # the new rootfs so the file can be written directly.
+    info 'Configuring DNS...'
 
     rm -f "$TMP_DIR/rootfs/etc/resolv.conf"
 
@@ -218,33 +232,35 @@ else
         "$UBUNTU_VERSION" "$UBUNTU_ARCH" \
         > "$TMP_DIR/rootfs/.installed"
 
-    # Move the completed installation into place.
-    mv "$TMP_DIR/rootfs" "$ROOTFS_DIR"
+    # Install only after download, verification and extraction.
 
-    success "Ubuntu ${UBUNTU_VERSION} installation completed."
+    mv "$TMP_DIR/rootfs" "$ROOTFS_DIR" ||
+        fail 'Could not install Ubuntu root filesystem.'
+
+    success 'Ubuntu 24.04 installation completed.'
 
     cleanup
-    trap - EXIT INT TERM
+    trap - EXIT HUP INT TERM
+
 fi
 
-# -------------------- LAUNCH UBUNTU -------------------------
+# -------------------- START UBUNTU -------------------------
 
 printf '\n'
 printf "${GREEN}====================================================${RESET}\n"
-printf "${YELLOW}         STARTING INSANE HOST UBUNTU${RESET}\n"
+printf "${YELLOW}          STARTING INSANE HOST UBUNTU${RESET}\n"
 printf "${GREEN}====================================================${RESET}\n"
 printf '\n'
 
 info "Ubuntu Version: ${UBUNTU_VERSION}"
 info "Architecture: ${UBUNTU_ARCH}"
-info "Root filesystem: $ROOTFS_DIR"
 
 printf '\n'
-printf "${YELLOW}Type 'exit' to leave Ubuntu.${RESET}\n"
-printf "${GREEN}INSANE HOST DEVELOPMENT${RESET}\n"
+printf "${GREEN}       INSANE HOST DEVELOPMENT${RESET}\n"
+printf "${YELLOW}       Type 'exit' to leave Ubuntu.${RESET}\n"
 printf '\n'
 
-# -------------------- START PROOT --------------------------
+# -------------------- PROOT LAUNCH -------------------------
 
 exec "$ROOTFS_DIR/usr/local/bin/proot" \
     -r "$ROOTFS_DIR" \
@@ -261,3 +277,4 @@ exec "$ROOTFS_DIR/usr/local/bin/proot" \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     TERM="${TERM:-xterm}" \
     /bin/bash --login
+```
