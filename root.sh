@@ -1,4 +1,3 @@
-```
 #!/bin/sh
 
 # ==========================================================
@@ -277,4 +276,3 @@ exec "$ROOTFS_DIR/usr/local/bin/proot" \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     TERM="${TERM:-xterm}" \
     /bin/bash --login
-```
