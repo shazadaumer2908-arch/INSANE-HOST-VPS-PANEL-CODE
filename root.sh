@@ -1,4 +1,4 @@
-```sh
+```bash
 #!/bin/sh
 set -eu
 
